@@ -4542,6 +4542,17 @@ out_error:
     return NULL;
 }
 
+static bool qemu_chr_is_busy(CharDriverState *chr)
+{
+    if (chr->is_mux) {
+        MuxDriver *d = chr->opaque;
+        return d->mux_cnt >= 0;
+    } else {
+        return (chr->chr_can_read || chr->chr_read ||
+                chr->chr_event || chr->handler_opaque);
+    }
+}
+
 void qmp_chardev_remove(const char *id, Error **errp)
 {
     CharDriverState *chr;
@@ -4551,8 +4562,7 @@ void qmp_chardev_remove(const char *id, Error **errp)
         error_setg(errp, "Chardev '%s' not found", id);
         return;
     }
-    if (chr->chr_can_read || chr->chr_read ||
-        chr->chr_event || chr->handler_opaque) {
+    if (qemu_chr_is_busy(chr)) {
         error_setg(errp, "Chardev '%s' is busy", id);
         return;
     }
